@@ -246,7 +246,7 @@ def solveMaze(original_binary_img, initial_point, final_point, no_cells_height, 
 		for column in range(0,no_cells_width):
 			graph[row,column] = find_neighbours(original_binary_img,row,column)
 
-	#print(graph)
+
 
 	shortestPath = find_path(graph,initial_point, final_point, original_binary_img)
 
@@ -322,11 +322,11 @@ if __name__ == '__main__':
 	print('\nShortest Path = %s \n\nLength of Path = %d' % (shortestPath, len(shortestPath)))
 
 	print('\n============================================')
-	"""
+
 	cv2.imshow('canvas0' + str(file_num), img)
 	cv2.waitKey(0)
 	cv2.destroyAllWindows()
-	"""
+
 
 	choice = input('\nWant to run your script on all maze images ? ==>> "y" or "n": ')
 
@@ -378,11 +378,11 @@ if __name__ == '__main__':
 			print('\nShortest Path = %s \n\nLength of Path = %d' % (shortestPath, len(shortestPath)))
 
 			print('\n============================================')
-			"""
+			
 			cv2.imshow('canvas0' + str(file_num), img)
 			cv2.waitKey(0)
 			cv2.destroyAllWindows()
-			"""
+
 	else:
 
 		print('')
