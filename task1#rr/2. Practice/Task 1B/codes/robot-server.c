@@ -60,6 +60,7 @@ char ipv4_addr_str_client[128];		// buffer to store IPv4 addresses as string
 int listen_sock;
 
 char line_data[MAXCHAR];
+int line_ptr = 3;
 
 FILE *input_fp, *output_fp;
 
@@ -72,22 +73,51 @@ FILE *input_fp, *output_fp;
 * Purpose: 			the function creates the socket connection with the server
 * Example call: 	int sock = socket_create(dest_addr, source_addr);
 */
-int socket_create(struct sockaddr_in dest_addr, struct sockaddr_in source_addr){
+int socket_create(struct sockaddr_in dest_addr, struct sockaddr_in source_addr) {
 
-	int addr_family;
-	int ip_protocol;
+	int opt = 1, new_socket;
+	int addrlen = sizeof(dest_addr);
 
 	dest_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	dest_addr.sin_family = AF_INET;
 	dest_addr.sin_port = htons(SERVER_PORT);
-	addr_family = AF_INET;
-	ip_protocol = IPPROTO_IP;
 
 	int my_sock;
+	printf("Self IP = %d.%d.%d.%d\n",INADDR_ANY,INADDR_ANY,INADDR_ANY,INADDR_ANY);
+	if ((my_sock = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+		perror("socket failed");
+		exit(EXIT_FAILURE);
+	} else {
+		printf("Socket created\n");
+	}
 
+	if (setsockopt(my_sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+		perror("setsockopt");
+		exit(EXIT_FAILURE);
+	}
 
+	if (bind(my_sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr))<0) {
+		perror("bind failed");
+		exit(EXIT_FAILURE);
+	} else {
+		printf("Socket bound, port %d\n", SERVER_PORT);
+	}
 
-	return my_sock;
+	if (listen(my_sock, 3) < 0) {
+		perror("listen");
+		exit(EXIT_FAILURE);
+	} else {
+		printf("Socket listening\n");
+	}
+
+	if ((new_socket = accept(my_sock, (struct sockaddr *)&dest_addr, (socklen_t*)&addrlen))<0) {
+		perror("accept");
+		exit(EXIT_FAILURE);
+	} else {
+		printf("Socket accepted\n");
+	}
+
+	return new_socket;
 }
 
 
@@ -100,10 +130,45 @@ int socket_create(struct sockaddr_in dest_addr, struct sockaddr_in source_addr){
 *					file and sends this information to the client in the provided format.
 * Example call: 	receive_from_send_to_client(sock);
 */
-int receive_from_send_to_client(int sock){
+int receive_from_send_to_client(int sock) {
+
+	for(int i=0; i<strlen(rx_buffer); ++i) rx_buffer[i]='\0';		//clear rx_buffer
+	if(recv(sock,rx_buffer,RX_BUFFER_SIZE,0)==0)
+		return 1;
+
+	int image_num = rx_buffer[0];
+	for(int i=0;i<strlen(rx_buffer);i++) rx_buffer[i]=rx_buffer[i+2];
+
+	printf("----------------------------\n");
+	printf("Received %ld bytes from  :\nData Received = %s\n", strlen(rx_buffer)+2, rx_buffer);
+	int i=0;
+	tx_buffer[i++]='@';
+	tx_buffer[i++]='$';
+	tx_buffer[i++]='@';
+	tx_buffer[i++]='\0';
+/*
+	if(image_num==(int)line_data[0]) {
+		while(1) {
+			if(line_data[line_ptr]=='\n') {
+				line_ptr = 3;
+				break;
+			}
+			else if(line_data[line_ptr]==';') {
+				tx_buffer[i++]='@';
+				tx_buffer[i++]='\0';
+				break;
+			}
+			else {
+				tx_buffer[i++]=line_data[line_ptr];
+			}
+			line_ptr++;
+		}
+	}
+*/
+	printf("Transmitted %ld bytes: %s\n",strlen(tx_buffer),tx_buffer);
+	send(sock,tx_buffer,strlen(tx_buffer),0);
 
 	return 0;
-
 }
 
 
