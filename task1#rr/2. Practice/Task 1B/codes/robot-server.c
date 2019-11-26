@@ -92,34 +92,39 @@ int socket_create(struct sockaddr_in dest_addr, struct sockaddr_in source_addr){
 	{
 		perror("socket failed");
 		exit(EXIT_FAILURE);
+	} else {
+		printf("Socket created\n");
 	}
 
-		if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,&opt, sizeof(opt)))
-		{
-			perror("setsockopt");
-			exit(EXIT_FAILURE);
-		}
+	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,&opt, sizeof(opt)))
+	{
+		perror("setsockopt");
+		exit(EXIT_FAILURE);
+	}
 
 	if (bind(server_fd, (struct sockaddr *)&dest_addr, sizeof(dest_addr))<0)
 	{
 		perror("bind failed");
 		exit(EXIT_FAILURE);
+	} else {
+		printf("Socket bound, port %d\n", SERVER_PORT);
 	}
-
-
 
 	if (listen(server_fd, 3) < 0)
 	{
 		perror("listen");
 		exit(EXIT_FAILURE);
+	} else {
+		printf("Socket listening\n");
 	}
 
 	if ((my_sock = accept(server_fd, (struct sockaddr *)&source_addr,(socklen_t*)&source_addr))<0)
 	{
 		perror("accept");
 		exit(EXIT_FAILURE);
+	} else {
+		printf("Socket accepted\n");
 	}
-
 
 	return my_sock;
 }
@@ -137,20 +142,34 @@ int socket_create(struct sockaddr_in dest_addr, struct sockaddr_in source_addr){
 int receive_from_send_to_client(int sock){
 	int n;
 
+	bzero(rx_buffer,RX_BUFFER_SIZE);
+	n = read(sock,rx_buffer,RX_BUFFER_SIZE);
+	printf("----------------------------\n");
+	printf("Received %ld bytes from  :\nData Received = %s\n", strlen(rx_buffer)+2, rx_buffer);
 
-	bzero(rx_buffer,sizeof(rx_buffer));
-	n = read(sock,rx_buffer,sizeof(rx_buffer));
+	bzero(tx_buffer,TX_BUFFER_SIZE);
 
-	//printf("Readings by server : %s\n",rx_buffer);
-
-	//strcpy(tx_buffer,line_data);
-	bzero(tx_buffer,sizeof(tx_buffer));
-
+// goes here when img0 is completed
+	if(rx_buffer[0]!='0') {
+		bzero(line_data,MAXCHAR);
+		// checks from start of file
+		fseek(input_fp, 0, SEEK_SET);
+		// until file end is not reached
+		while(fgets(line_data, MAXCHAR, input_fp)!=NULL) {
+			// when obstacles are found for image, initialise tx_buffer with '@' and goto xyz label, rest is same
+			if(rx_buffer[0]==line_data[0]) {
+				const char* at0 = "@";
+				strcat(tx_buffer,at0);
+				goto xyz;
+			}
+		}
+		return 0;
+	}
 
 	const char* at0 = "@";
-
-
 	strcat(tx_buffer,at0);
+
+xyz:
 	if(strcmp(line_data,"@$@") == 0)
 	{
 		tx_buffer[1] = '$';
@@ -162,50 +181,22 @@ int receive_from_send_to_client(int sock){
 		while(pos < 5){
 
 			tx_buffer[pos+1] = p[pos];
-			//printf("\n character at pos+1 tx_buffer is : %c\n",tx_buffer[pos+1]);
 			pos++;
 		};
 	}
 	const char* at1 = "@";
 	strcat(tx_buffer,at1);
-	//printf("\nPosition of ( %s\n",strchr(line_data,'('));
 
-	//printf("\n character at position 4 : %c\n",tx_buffer[4]+'\0');
-	// substraction with null character is done because buffer return ascii in integer form.
-	//which can be converterd back by simply subctracting null charcter to the integer in c
-
-	//printf("\nWriting before buffer(line_data) : %s\n",tx_buffer);
-
-	//printf("\nwriting by server %s\n",tx_buffer);
-	write(sock,tx_buffer,sizeof(tx_buffer));
-	//printf("\nwriting to buffer : %s\n",tx_buffer);
-	//updation in line_data
-	/*
-	if(strcmp(line_data,"@$@") == 0)
-	{
-		printf("\nStream end\n");
-		return 0;
-	}
-	*/
+	write(sock,tx_buffer,strlen(tx_buffer));
+	printf("Transmitted %ld bytes: %s\n",strlen(tx_buffer),tx_buffer);
 
 	char *new_data = strchr(line_data,';');
-//	printf("\nnew_data  : %s\n",new_data);
 	if(new_data != NULL)
-	{
 		strcpy(line_data,&new_data[1]);
-		//printf("\nData in line_data is : %s \n",line_data);
-	}
 	else
-	{
 		strcpy(line_data,"@$@");
-		//printf("\nData in line_data is : %s \n",line_data);
-
-	}
-
-
 
 	return 0;
-
 }
 
 
